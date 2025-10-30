@@ -134,6 +134,58 @@ def get_weather(city: str) -> str:
             "error": f"Failed to fetch weather: {str(e)}"
         })
 
+
+@tool
+def convert_temperature(value: float, from_unit: str, to_unit: str) -> str:
+    """Convert temperature between Celsius and Fahrenheit.
+
+    Args:
+        value: The temperature value to convert.
+        from_unit: The input unit ("C", "Celsius", "F", or "Fahrenheit").
+        to_unit: The desired output unit ("C", "Celsius", "F", or "Fahrenheit").
+
+    Returns:
+        JSON string with the converted value and normalized units, or error.
+    """
+    try:
+        normalized_from = (from_unit or "").strip().lower()
+        normalized_to = (to_unit or "").strip().lower()
+
+        def normalize_unit(u: str) -> str | None:
+            if u in {"c", "celsius"}:
+                return "C"
+            if u in {"f", "fahrenheit"}:
+                return "F"
+            return None
+
+        src = normalize_unit(normalized_from)
+        dst = normalize_unit(normalized_to)
+
+        if src is None or dst is None:
+            return json.dumps({
+                "error": "Unsupported unit. Use C/Celsius or F/Fahrenheit.",
+                "from_unit": from_unit,
+                "to_unit": to_unit,
+            })
+
+        if src == dst:
+            return json.dumps({
+                "input": {"value": value, "unit": src},
+                "output": {"value": value, "unit": dst}
+            })
+
+        if src == "C" and dst == "F":
+            converted = (value * 9.0 / 5.0) + 32.0
+        else:  # src == "F" and dst == "C"
+            converted = (value - 32.0) * 5.0 / 9.0
+
+        return json.dumps({
+            "input": {"value": value, "unit": src},
+            "output": {"value": converted, "unit": dst}
+        })
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
 def create_agent(session_id: str) -> Agent:
     session_manager_kwargs = {
         "session_id": session_id,
@@ -147,7 +199,7 @@ def create_agent(session_id: str) -> Agent:
     agent = Agent(
         model=model_id,
         session_manager=session_manager,
-        tools=[get_weather],
+        tools=[get_weather, convert_temperature],
     )
     logger.info("Agent initialized for session %s", session_id)
     return agent
