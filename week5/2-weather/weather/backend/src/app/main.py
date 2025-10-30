@@ -12,6 +12,7 @@ import uuid
 import uvicorn
 import urllib.request
 import urllib.parse
+from datetime import datetime, timezone, timedelta
 
 model_id = os.environ.get("MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 state_bucket = os.environ.get("STATE_BUCKET", "")
@@ -32,6 +33,59 @@ if state_prefix and not state_prefix.endswith("/"):
     state_prefix = f"{state_prefix}/"
 
 boto_session = boto3.Session()
+s3_client = boto_session.client("s3")
+
+# Cache configuration
+weather_cache_prefix = os.environ.get("WEATHER_CACHE_PREFIX", "weather_cache/")
+try:
+    weather_cache_ttl_seconds = int(os.environ.get("WEATHER_CACHE_TTL_SECONDS", "600"))
+except ValueError:
+    weather_cache_ttl_seconds = 600
+
+
+def _make_weather_cache_key(city: str) -> str:
+    # Normalize and URL-encode for safe S3 key usage
+    normalized = (city or "").strip().lower()
+    encoded = urllib.parse.quote(normalized, safe="")
+    prefix = weather_cache_prefix if weather_cache_prefix.endswith("/") else f"{weather_cache_prefix}/"
+    return f"{prefix}{encoded}.json"
+
+
+def _get_cached_weather(city: str) -> str | None:
+    if not city:
+        return None
+    key = _make_weather_cache_key(city)
+    try:
+        head = s3_client.head_object(Bucket=state_bucket, Key=key)
+        last_modified: datetime = head["LastModified"]
+        # Convert to aware UTC and check TTL
+        age = datetime.now(timezone.utc) - last_modified.astimezone(timezone.utc)
+        if age > timedelta(seconds=weather_cache_ttl_seconds):
+            return None
+        obj = s3_client.get_object(Bucket=state_bucket, Key=key)
+        data = obj["Body"].read().decode("utf-8")
+        # ensure it looks like JSON
+        json.loads(data)
+        logger.info("Cache hit for city '%s'", city)
+        return data
+    except s3_client.exceptions.NoSuchKey:
+        return None
+    except Exception:
+        # Any failure -> treat as cache miss
+        return None
+
+
+def _put_cached_weather(city: str, data: str) -> None:
+    try:
+        key = _make_weather_cache_key(city)
+        s3_client.put_object(
+            Bucket=state_bucket,
+            Key=key,
+            Body=data.encode("utf-8"),
+            ContentType="application/json",
+        )
+    except Exception as e:
+        logger.warning("Failed to write weather cache for '%s': %s", city, str(e))
 
 
 class ChatRequest(BaseModel):
@@ -53,6 +107,11 @@ def get_weather(city: str) -> str:
             "error": "city is required"
         })
 
+    # Check cache first
+    cached = _get_cached_weather(city)
+    if cached is not None:
+        return cached
+
     encoded_city = urllib.parse.quote(city.strip())
     url = f"https://wttr.in/{encoded_city}?format=j1"
 
@@ -63,6 +122,7 @@ def get_weather(city: str) -> str:
             # Ensure it's valid JSON; if not, wrap as error
             try:
                 json.loads(data)
+                _put_cached_weather(city, data)
                 return data
             except json.JSONDecodeError:
                 return json.dumps({
