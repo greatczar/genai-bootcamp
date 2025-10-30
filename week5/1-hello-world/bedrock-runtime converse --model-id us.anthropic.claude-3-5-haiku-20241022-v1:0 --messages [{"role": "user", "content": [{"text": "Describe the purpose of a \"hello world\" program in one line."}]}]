@@ -1,0 +1,23 @@
+{
+    "output": {
+        "message": {
+            "role": "assistant",
+            "content": [
+                {
+                    "text": "A \"hello world\" program demonstrates the basic syntax of a programming language by printing the text \"Hello, World!\" to demonstrate a simple output operation."
+                }
+            ]
+        }
+    },
+    "stopReason": "end_turn",
+    "usage": {
+        "inputTokens": 22,
+        "outputTokens": 33,
+        "totalTokens": 55,
+        "cacheReadInputTokens": 0,
+        "cacheWriteInputTokens": 0
+    },
+    "metrics": {
+        "latencyMs": 972
+    }
+}

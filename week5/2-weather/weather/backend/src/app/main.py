@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from strands import Agent
+from strands import tool
 from strands.session.s3_session_manager import S3SessionManager
 import boto3
 import json
@@ -9,6 +10,8 @@ import logging
 import os
 import uuid
 import uvicorn
+import urllib.request
+import urllib.parse
 
 model_id = os.environ.get("MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 state_bucket = os.environ.get("STATE_BUCKET", "")
@@ -35,6 +38,42 @@ class ChatRequest(BaseModel):
     prompt: str
 
 
+@tool
+def get_weather(city: str) -> str:
+    """get weather for a given city
+
+    Args:
+        city: The city to get the weather for.
+
+    Returns:
+        The current weather for the given city in JSON format.
+    """
+    if not city or not city.strip():
+        return json.dumps({
+            "error": "city is required"
+        })
+
+    encoded_city = urllib.parse.quote(city.strip())
+    url = f"https://wttr.in/{encoded_city}?format=j1"
+
+    try:
+        with urllib.request.urlopen(url, timeout=20) as response:
+            charset = response.headers.get_content_charset() or "utf-8"
+            data = response.read().decode(charset)
+            # Ensure it's valid JSON; if not, wrap as error
+            try:
+                json.loads(data)
+                return data
+            except json.JSONDecodeError:
+                return json.dumps({
+                    "error": "Non-JSON response from wttr.in",
+                    "raw": data[:5000]
+                })
+    except Exception as e:
+        return json.dumps({
+            "error": f"Failed to fetch weather: {str(e)}"
+        })
+
 def create_agent(session_id: str) -> Agent:
     session_manager_kwargs = {
         "session_id": session_id,
@@ -45,7 +84,11 @@ def create_agent(session_id: str) -> Agent:
         session_manager_kwargs["prefix"] = state_prefix
 
     session_manager = S3SessionManager(**session_manager_kwargs)
-    agent = Agent(model=model_id, session_manager=session_manager)
+    agent = Agent(
+        model=model_id,
+        session_manager=session_manager,
+        tools=[get_weather],
+    )
     logger.info("Agent initialized for session %s", session_id)
     return agent
 
