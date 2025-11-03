@@ -117,12 +117,16 @@ def create_dummy_trips(user_id: str):
         nana_trip_id = nana_trip.save()
 
         # Flights for Nana's 80th
+        now_utc = datetime.now(timezone.utc)
+        nana_departure = (now_utc - timedelta(weeks=12)).replace(hour=12, minute=0, second=0, microsecond=0)
+        nana_return_departure = nana_departure + timedelta(days=7)
+
         flight1_nana = Flight(
             trip_id=nana_trip_id,
             from_airport="MUC",
             to_airport="ICN",
-            departure_time=datetime(2024, 6, 1, 12, 0, tzinfo=timezone.utc),
-            arrival_time=datetime(2024, 6, 1, 23, 0, tzinfo=timezone.utc),
+            departure_time=nana_departure,
+            arrival_time=nana_departure + timedelta(hours=11),
             price=Decimal("800.00"),
             ticket_type=TicketType.BASIC_ECONOMY,
         )
@@ -132,8 +136,8 @@ def create_dummy_trips(user_id: str):
             trip_id=nana_trip_id,
             from_airport="ICN",
             to_airport="MUC",
-            departure_time=datetime(2024, 6, 8, 12, 0, tzinfo=timezone.utc),
-            arrival_time=datetime(2024, 6, 8, 23, 0, tzinfo=timezone.utc),
+            departure_time=nana_return_departure,
+            arrival_time=nana_return_departure + timedelta(hours=11),
             price=Decimal("850.00"),
             ticket_type=TicketType.BASIC_ECONOMY,
         )
@@ -144,11 +148,10 @@ def create_dummy_trips(user_id: str):
         summer_trip = Trip(user_id=user_id, name="Summer weekend")
         summer_trip_id = summer_trip.save()
 
-        # Dates for Summer weekend: Friday in two weeks from 2025-07-08 (a fixed date for predictability), and Monday after
-        base_date = datetime(2025, 7, 8, tzinfo=timezone.utc)
-        in_two_weeks = base_date + timedelta(weeks=2)
-        days_to_friday = (4 - in_two_weeks.weekday() + 7) % 7
-        friday_date = in_two_weeks + timedelta(days=days_to_friday)
+        target_year = now_utc.year if now_utc.month < 7 else now_utc.year + 1
+        july_first = datetime(target_year, 7, 1, tzinfo=timezone.utc)
+        days_to_friday = (4 - july_first.weekday()) % 7
+        friday_date = july_first + timedelta(days=days_to_friday)
         monday_date = friday_date + timedelta(days=3)
 
         # Flights for Summer weekend

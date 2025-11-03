@@ -11,6 +11,7 @@ class Fn(Construct):
     def __init__(self, scope: Construct, id: str,
                  code_path: str,
                  timeout: int = 30,
+                 memory_size: int = 512,
                  bucket: Bucket | None = None,
                  ddb_table: TableV2 | None = None,
                 ) -> None:
@@ -31,6 +32,7 @@ class Fn(Construct):
                                     )
                           ),
                           handler="main.handler",
+                          memory_size=memory_size,
                         )
         # Add Bedrock permissions to the Lambda function
         self.function.add_to_role_policy(
