@@ -33,6 +33,9 @@ class Fn(Construct):
                           ),
                           handler="main.handler",
                           memory_size=memory_size,
+                          environment={
+                                    "MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+                          },
                         )
         # Add Bedrock permissions to the Lambda function
         self.function.add_to_role_policy(
