@@ -1,1 +1,4 @@
 .aider*
+__pycache__/
+*.pyc
+cdk.out/

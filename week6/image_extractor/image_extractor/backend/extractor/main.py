@@ -5,13 +5,10 @@ from strands import Agent
 import uuid
 from pydantic import BaseModel, Field
 
-class BankStatement(BaseModel):
-    BankName: str = Field(description="The name of the bank")
-    AccountNumber: str = Field(description="The account number")
-    OpeningBalance: float = Field(description="The opening balance")
-    ClosingBalance: float = Field(description="The closing balance")
-    StartDate: str = Field(description="The start date of the bank statement")
-    EndDate: str = Field(description="The end date of the bank statement")
+class PropertyTaxStatement(BaseModel):
+    PropertyTaxYear: int = Field(description="The year the property was assessed")
+    PropertyTaxes: float = Field(description="The taxes of the property")
+
 
 model_id = os.environ.get("MODEL_ID", "")
 s3_client = boto3.client('s3')
@@ -21,7 +18,7 @@ agent = Agent(model=model_id, callback_handler=None)
 
 def extract_bank_statement_data(document: bytes) -> dict:
     """
-    Extracts structured data from a bank statement document.
+    Extracts structured data from a property tax statement image.
     """
     # extractor_prompt = """
     #     Please extract the following information from this bank statement and return it as a JSON object:
@@ -34,12 +31,11 @@ def extract_bank_statement_data(document: bytes) -> dict:
     # """
     base_prompt = [
             {
-                "text": "Extract all relevant information from the bank statement provided.",
+                "text": "Extract all relevant information from the property tax statement provided.",
             },
             {
-                "document": {
-                    "format": "pdf",
-                    "name": f"bank_statement-{uuid.uuid4()}",
+                "image": {
+                    "format": "png",
                     "source": {
                         "bytes": document,
                     },
@@ -47,7 +43,7 @@ def extract_bank_statement_data(document: bytes) -> dict:
             },
         ]
     response = agent.structured_output(
-        BankStatement,
+        PropertyTaxStatement,
         prompt=base_prompt
     )
 
