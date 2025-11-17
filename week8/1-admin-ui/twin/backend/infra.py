@@ -49,7 +49,7 @@ class Backend(Construct):
                                     "AWS_LWA_INVOKE_MODE": "response_stream",
                                     "DDB_TABLE": dynamo_db_table.table_name,
                                     "KNOWLEDGE_BASE_ID": kb_id,
-                                    "MODEL_ID": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                                    "MODEL_ID": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                                     "PORT": "8000",
                                     "STATE_BUCKET": state_bucket.bucket_name,
                                     "NOTIFICATION_TOPIC_ARN": notification_topic.topic_arn,

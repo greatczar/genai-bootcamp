@@ -115,7 +115,7 @@ function handler(event) {
                                       distribution_paths=['/'],
                                      )
 
-        _ = s3deploy.BucketDeployment(self, 'DeployAdminFrontend',
+        admin_frontend_deployment = s3deploy.BucketDeployment(self, 'DeployAdminFrontend',
                                       sources=[s3deploy.Source.asset('./twin/frontend/admin', bundling=BundlingOptions(
                                           bundling_file_access=BundlingFileAccess.VOLUME_COPY,
                                           image=DockerImage.from_registry('node:22'),
@@ -141,7 +141,7 @@ function handler(event) {
             '"}'
         ])
 
-        _ = s3deploy.BucketDeployment(self, 'DeployAdminEnv',
+        admin_env_deployment = s3deploy.BucketDeployment(self, 'DeployAdminEnv',
                                       sources=[s3deploy.Source.data(
                                           '_app/env.js',
                                           env_js_content
@@ -152,6 +152,9 @@ function handler(event) {
                                       distribution_paths=['/admin/_app/env.js'],
                                       content_type='application/javascript'
                                       )
+
+        # Ensure env.js is deployed after the main admin frontend to avoid race condition
+        admin_env_deployment.node.add_dependency(admin_frontend_deployment)
 
         
         self.domain_name = distribution.distribution_domain_name
