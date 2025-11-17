@@ -13,7 +13,7 @@ export async function configureAmplify() {
 		return;
 	}
 	// @ts-ignore
-	const { env } = await import(`${''}/admin/_app/env.js`);
+	const { env } = await import(`${''}/_app/env.js`);
 	const userPoolId = env.PUBLIC_VITE_COGNITO_USER_POOL_ID;
 	const userPoolClientId = env.PUBLIC_VITE_COGNITO_USER_POOL_CLIENT_ID;
 	console.log('Configuring Amplify with User Pool ID:', userPoolId, 'and Client ID:', userPoolClientId);
